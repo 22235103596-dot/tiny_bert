@@ -1,0 +1,6 @@
+Model / Configuration,Model Type,Init Strategy,Objective,Parameters,Val Macro F1,Test Accuracy,Test Macro F1,Test Macro Prec,Test Macro Rec,Test Clickbait F1,Test Non-CB F1,Confusion Matrix (TN/FP/FN/TP)
+Teacher (BanglaBERT Baseline),Teacher (12L / 768H),Pre-trained,Supervised CE,110.6M,0.8065,0.0,0.0,0.0,0.0,0.0,0.0,"[0, 0, 0, 0]"
+Student: Random Init + Supervised,Student (4L / 256H),Random Gaussian,Supervised CE,11.55M,0.7448,0.0,0.0,0.0,0.0,0.0,0.0,"[0, 0, 0, 0]"
+Student: Random Init + Distilled,Student (4L / 256H),Random Gaussian,"KD Loss (T=2.0, a=0.1)",11.55M,0.7448,0.0,0.0,0.0,0.0,0.0,0.0,"[0, 0, 0, 0]"
+Student: Teacher Init + Supervised,Student (4L / 256H),Teacher Projection,Supervised CE,11.55M,0.7462,0.0,0.0,0.0,0.0,0.0,0.0,"[0, 0, 0, 0]"
+Student: Teacher Init + Distilled,Student (4L / 256H),Teacher Projection,"KD Loss (T=2.0, a=0.1)",11.55M,0.7462,0.0,0.0,0.0,0.0,0.0,0.0,"[0, 0, 0, 0]"

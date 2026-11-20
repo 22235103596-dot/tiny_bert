@@ -1,0 +1,35 @@
+# Student: pretrained small-subset init + REAL knowledge distillation (+ unlabeled pool).
+# Run:  python -m scripts.train --config configs/student_kd_improved.yaml
+# Prerequisite: teacher trained (experiments/teacher/ + train_soft_labels.pt).
+model:
+  student_model_name: "csebuetnlp/banglabert_small"
+  teacher_model_name: "csebuetnlp/banglabert"
+  init_type: "small_subset"
+  num_hidden_layers: 4          # try 6 for ~+2.4M params if you want more headroom
+  max_seq_len: 128
+  dropout: 0.1
+
+distillation:
+  temperature: 2.0              # re-tune with scripts/tune_kd.py now that KD actually runs
+  alpha: 0.3                    # weight of hard CE; (1-alpha) goes to the teacher soft loss
+  use_unlabeled: true           # distil on the 65k teacher-labelled unlabeled headlines
+  max_unlabeled: null           # null = use all
+  unlabeled_cache: "experiments/teacher/unlabeled_soft_labels.pt"
+
+training:
+  output_dir:             "experiments"
+  run_name:               "student_kd_improved"
+  epochs:                 10
+  batch_size:             64
+  lr:                     1.0e-4
+  weight_decay:           0.01
+  warmup_ratio:           0.1
+  gradient_clip:          1.0
+  eval_strategy:          "epoch"
+  save_strategy:          "epoch"
+  early_stopping_patience: 3
+  load_best_model_at_end: true
+  metric_for_best:        "f1_macro"
+  greater_is_better:      true
+  fp16:                   true
+  dataloader_num_workers: 0

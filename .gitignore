@@ -1,0 +1,101 @@
+# ==============================================================================
+# TinyBanglaBERT Git Ignore Rules
+# ==============================================================================
+
+# Byte-compiled / optimized Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Distribution / packaging / builds
+dist/
+build/
+*.egg-info/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter & Notebook Checkpoints
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+.jupyter/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Pytest / Coverage / Profiling
+.pytest_cache/
+.pytest_tmp/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# ── Data files ───────────────────────────────────────────────────────────────
+# Raw downloaded datasets (large, reproducible via scripts)
+data/raw/
+
+# Note: data/processed/splits.json is tracked for deterministic evaluation
+
+# ── Model Checkpoints & Large Binary Weights ─────────────────────────────────
+# Large model binaries (>100MB or reproducible via training pipelines)
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.onnx_data
+*.tflite
+*.pb
+
+# Experiment checkpoints & run artifacts
+experiments/**/checkpoints/
+experiments/*/checkpoints/
+experiments/**/metrics.json
+experiments/*/metrics.json
+experiments/**/run.log
+experiments/*/run.log
+*.log
+
+# Keep summary CSVs, test metrics, run info, configs and figures tracked
+!experiments/*/metrics.csv
+!experiments/*/test_metrics.json
+!experiments/*/run_info.json
+!experiments/*/config.yaml
+!experiments/*/config.json
+!experiments/*/tokenizer.json
+!experiments/*/tokenizer_config.json
