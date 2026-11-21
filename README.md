@@ -187,11 +187,11 @@ If you use TinyBanglaBERT, its architecture, or distilled checkpoints in your re
 ```bibtex
 @thesis{tinybanglabert2026,
   title  = {A Lightweight Knowledge-Distilled Transformer for Explainable Bangla Clickbait Headline Detection},
-  author = {<MD. Raja Rafi> ,<Nahida Afrin> and <Sajib Chandra das> and <Tarin Chowdhury> and <Tahsin Mahtab Enti>},
+  author = {MD. Abir Reja Rafi ,Nahida Afrin Mimfa and Sajib Chandra Das and Tarin Chowdhury and Tahsin Mahtab Enti},
   school = {Bangladesh University of Business and Technology (BUBT)},
   year   = {2026},
   type   = {Undergraduate thesis},
-  note   = {Supervisor: <name>}
+  note   = {Supervisor: T M Amir - Ul - Haque Bhuiyan}
 }
 ```
 
