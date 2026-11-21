@@ -185,12 +185,13 @@ python -m scripts.generate_all_figures
 If you use TinyBanglaBERT, its architecture, or distilled checkpoints in your research, please cite our work:
 
 ```bibtex
-@article{rahman2026tinybanglabert,
-  title   = {TinyBanglaBERT: A Lightweight Knowledge-Distilled Transformer for Real-Time Explainable Bangla Clickbait Detection on Edge Devices},
-  author  = {Rahman, Mushfiqur},
-  year    = {2026},
-  journal = {arXiv preprint},
-  url     = {https://github.com/mushfiqur-rahman/tinybanglabert}
+@thesis{tinybanglabert2026,
+  title  = {A Lightweight Knowledge-Distilled Transformer for Explainable Bangla Clickbait Headline Detection},
+  author = {<MD. Raja Rafi> ,<Nahida Afrin> and <Sajib Chandra das> and <Tarin Chowdhury> and <Tahsin Mahtab Enti>},
+  school = {Bangladesh University of Business and Technology (BUBT)},
+  year   = {2026},
+  type   = {Undergraduate thesis},
+  note   = {Supervisor: <name>}
 }
 ```
 
