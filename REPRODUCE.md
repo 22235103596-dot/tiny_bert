@@ -1,162 +1,75 @@
-> **Note (Nov 2026):** numbers/expected results below predate a bug fix. Use `RESULTS_NOV2026.md` and `notebooks/`. For the teacher use `python -m scripts.train --config configs/teacher_baseline.yaml`; for the final student use `configs/student_kd_improved.yaml`.
+# TinyBanglaBERT — Reproduction Manual (corrected, Nov 2026)
 
-# TinyBanglaBERT: End-to-End Reproduction Guide
+How to reproduce the corrected results in `FINAL_RESULTS.md`. The easiest route is the three Kaggle notebooks in `notebooks/`; the CLI route is given below. Expected numbers vary by ±0.5 accuracy points across runs/hardware.
 
-This guide details the exact sequential commands and environment configurations required to reproduce all findings, models, evaluations, explainability analyses, and thesis artifacts from a clean clone.
+## 1. Requirements
+- Python 3.10+; a GPU is strongly recommended for training (Kaggle T4/P100 is enough; whole study ≈ 1–2 GPU hours). CPU is enough for the latency benchmark.
+- Packages: `pip install -r requirements.txt` (torch, transformers, datasets, accelerate, scikit-learn, pandas, scipy, shap, lime, onnx, onnxruntime, matplotlib, pytest, pyyaml).
 
----
-
-## 1. System Requirements & Hardware Assumptions
-
-- **Operating System**: Windows 11 / 10, Linux (Ubuntu 20.04+), or macOS (Apple Silicon).
-- **Python Version**: Python 3.12 (or 3.10+).
-- **GPU (Optional but Recommended for Training)**:
-  - Tested on: NVIDIA GeForce RTX 5050 Laptop GPU (CUDA 12.8).
-  - VRAM: $\ge$ 4 GB (Batch size 16/32 with FP16 enabled).
-- **CPU (for Inference Benchmarks)**: Modern x86-64 / ARM64 processor.
-
----
-
-## 2. Environment Setup
-
-```powershell
-# 1. Clone the repository
-git clone https://github.com/mushfiqur-rahman/tiny_bert.git
-cd tiny_bert
-
-# 2. Initialize Python virtual environment
-python -m venv .venv
-
-# 3. Activate virtual environment
-# On Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-# On Linux/macOS:
-source .venv/bin/activate
-
-# 4. Install all production and development dependencies
-pip install --upgrade pip
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128  # Or standard PyTorch
-pip install transformers datasets evaluate accelerate scikit-learn pandas numpy matplotlib seaborn scipy statsmodels shap lime onnx onnxruntime onnxscript pytest pyyaml tabulate
+```bash
+git clone <your-repo-url> && cd tiny_bert
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
----
+## 2. Option A — Kaggle notebooks (recommended)
+| Notebook | Does |
+|---|---|
+| `notebooks/01_kaggle_teacher_and_first_rerun.ipynb` | data split, teacher fine-tuning, (T, α) grid, first student re-run |
+| `notebooks/02_kaggle_ablation_multiseed.ipynb` | R0–R3 ablation, seeds 42/43/44, summary table |
+| `notebooks/03_kaggle_final_evaluation.ipynb` | McNemar, efficiency (PyTorch/ONNX/INT8), cross-domain, SHAP/LIME |
 
-## 3. Step-by-Step Execution Pipeline
+Enable GPU + Internet, run top to bottom, and copy the outputs into `results/`.
 
-### Phase 1: Data Ingestion, NFC Normalization & Splitting
-- **Command**:
-  ```powershell
-  python -m src.data.load
-  python -m src.data.split --seed 42
-  ```
-- **Expected Runtime**: ~15 seconds.
-- **Output**: `data/processed/splits.json` (12,044 train / 1,506 val / 1,506 test).
+## 3. Option B — command line
+```bash
+# 1. Data (BanglaBait, seed-42 split: 12,044 / 1,506 / 1,506)
+python -m scripts.prepare_data --seed 42
 
----
+# 2. Teacher (expected ≈ 83% acc, macro-F1 ≈ 0.81; ~5 epochs)
+python -m scripts.train --config configs/teacher_baseline.yaml
 
-### Phase 2: Teacher Fine-Tuning (BanglaBERT Baseline)
-- **Command**:
-  ```powershell
-  python -m src.training.train_teacher --config configs/teacher.yaml
-  ```
-- **Expected Runtime**: ~3.5 minutes on RTX 5050 GPU (5 epochs, batch size 16, FP16).
-- **Expected Test Performance**: Macro-F1: `0.8233`, Accuracy: `84.20%`.
-- **Output**: Model checkpoint and `experiments/teacher/train_soft_labels.pt`.
+# 3. (T, α) grid — KD is now really active, so the grid is no longer flat
+python -m scripts.tune_kd --init small_subset --epochs 3
 
----
+# 4. Ablation, 3 seeds each (use T=1.0, alpha=0.1)
+for s in 42 43 44; do
+  python -m scripts.train --config configs/student_kd_improved.yaml --init small_random  --alpha 1.0 --seed $s   # R0 random, no KD
+  python -m scripts.train --config configs/student_kd_improved.yaml --init small_subset  --alpha 1.0 --seed $s   # R1 pretrained, no KD
+  python -m scripts.train --config configs/student_kd_improved.yaml --init small_random  --temperature 1.0 --alpha 0.1 --seed $s  # R2
+  python -m scripts.train --config configs/student_kd_improved.yaml --init small_subset  --temperature 1.0 --alpha 0.1 --seed $s  # R3 (final)
+done
+# --alpha 1.0 means pure cross-entropy (no distillation).
 
-### Phase 3: Distillation Hyperparameter Tuning ($T, \alpha$ Grid Search)
-- **Command**:
-  ```powershell
-  python -m scripts.tune_kd --trials 20
-  ```
-- **Expected Runtime**: ~5 minutes.
-- **Output**: `experiments/tuning/kd_grid_results.json` ($T^*=2.0, \alpha^*=0.1$).
+# 5. Efficiency, significance, cross-domain, explainability
+python -m scripts.benchmark --n-iterations 200
+python -c "from src.evaluation.mcnemar_test import run_full_mcnemar_suite; run_full_mcnemar_suite()"
+python -c "from src.evaluation.crossdomain_eval import run_crossdomain_evaluation; run_crossdomain_evaluation('abdalimran/BaitBuster-Bangla')"
+# (notebook 03 runs these with the exact final-model paths; use it if the defaults do not match your folders)
+python -m scripts.explain --generate-thesis-samples --sample-size 15
 
----
-
-### Phase 4: Student 4-Way Ablation Training
-Train all 4 factorial combinations on the CLI:
-
-```powershell
-# 1. Random Init + Supervised Baseline
-python -m scripts.train --config configs/student_random_baseline.yaml
-
-# 2. Random Init + Knowledge Distillation
-python -m scripts.train --config configs/student_random_distilled.yaml
-
-# 3. Teacher-Projected Init + Supervised Baseline
-python -m scripts.train --config configs/student_teacher_init_baseline.yaml
-
-# 4. Teacher-Projected Init + Knowledge Distillation (Winning Model)
-python -m scripts.train --config configs/student_teacher_init_distilled.yaml
+# 6. Figures
+python -m scripts.make_figures
 ```
-- **Expected Runtime**: ~45 seconds per run on RTX 5050 GPU (~3.5 minutes total).
+Note: the `student_kd_improved.yaml` defaults (T=2, α=0.3, unlabeled pool) are *not* the values used in the paper; always pass `--temperature 1.0 --alpha 0.1` for R2/R3. `use_unlabeled` has no effect because the dataset contains no unlabeled rows.
 
----
+## 4. Expected results (seed 42 / 3-seed mean)
+| Item | Expected |
+|---|---|
+| Teacher | 83.13% acc, macro-F1 0.812 |
+| R0 / R1 / R2 / R3 (acc %) | 75.2 / 79.7 / 76.4 / 80.5 (±0.4–0.8) |
+| Teacher vs R3 McNemar | p ≈ 0.018 |
+| CPU latency | teacher ≈ 154 ms, student ≈ 13 ms (Kaggle CPU) |
+| Cross-domain acc | teacher ≈ 77.0%, student ≈ 73.8% |
 
-### Phase 5: Ablation Summary & Final Model Selection
-- **Command**:
-  ```powershell
-  python -c "from src.evaluation.ablation import run_ablation_analysis; df, best = run_ablation_analysis(); print('Selected Best Model:', best)"
-  ```
-- **Output**: `experiments/ablation_summary.md`, `experiments/ablation_table.csv`, and copied model to `experiments/tinybanglabert_final/`.
-
----
-
-### Phase 6: Efficiency, CPU Latency & ONNX Benchmarking
-- **Command**:
-  ```powershell
-  python -m scripts.benchmark --n-iterations 200
-  ```
-- **Expected Runtime**: ~45 seconds (200 single-headline passes across 4 runtimes).
-- **Output**: `experiments/efficiency_report.md`, `experiments/onnx/tinybanglabert.onnx`, `experiments/onnx/tinybanglabert_int8.onnx`.
-
----
-
-### Phase 7: Explainability (SHAP & LIME) & Cross-Method Agreement
-- **Command**:
-  ```powershell
-  python -m scripts.explain --generate-thesis-samples --sample-size 15
-  ```
-- **Expected Runtime**: ~55 seconds.
-- **Output**: `experiments/explainability/examples.md`, `experiments/explainability/agreement_report.md`.
-
----
-
-### Phase 8: Statistical Significance Testing (McNemar's Exact Test)
-- **Command**:
-  ```powershell
-  python -c "from src.evaluation.mcnemar_test import run_full_mcnemar_suite; df, rpt = run_full_mcnemar_suite()"
-  ```
-- **Expected Runtime**: ~25 seconds.
-- **Output**: `experiments/significance_report.md`, `experiments/significance_table.csv`.
-
----
-
-### Phase 9: Cross-Domain Generalization Evaluation
-- **Command**:
-  ```powershell
-  python -c "from src.evaluation.crossdomain_eval import run_crossdomain_evaluation; df, rpt = run_crossdomain_evaluation('abdalimran/BaitBuster-Bangla')"
-  ```
-- **Expected Runtime**: ~40 seconds on GPU (10,000 samples).
-- **Output**: `experiments/crossdomain_report.md`, `experiments/crossdomain_table.csv`.
-
----
-
-### Phase 10: Generate 300 DPI Publication Figures
-- **Command**:
-  ```powershell
-  python -m scripts.generate_all_figures
-  ```
-- **Output**: `experiments/figures/fig1_ablation_f1_accuracy.png` through `fig6_confusion_matrices.png`.
-
----
-
-## 4. Full Unit Test Suite Verification
-
-Verify all modules, loaders, losses, and metrics pass with 100% coverage:
-```powershell
+## 5. Verify the code
+```bash
 pytest tests/ -v
 ```
-**Expected Result**: `88 passed in ~22s`.
+`tests/test_kd_fixes.py` guards the distillation bug (teacher logits must reach the loss) and `tests/test_metric_argument_order.py` guards the cross-domain precision/recall orientation. `tests/test_ablation.py` is skipped (legacy).
+
+## 6. Troubleshooting
+- *"teacher_logits missing" RuntimeError:* intended guard — make sure `remove_unused_columns=False` and `experiments/teacher/train_soft_labels.pt` exist.
+- *Flat (T, α) grid:* means KD is not running; re-check the guard/test above.
+- Weights and ONNX files are git-ignored; regenerate them with the steps above.
+- Old outputs from the buggy run are kept in `archive_old_buggy_run/` for reference only.

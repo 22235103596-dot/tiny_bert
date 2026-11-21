@@ -39,7 +39,7 @@ Students: 4 layers, 7.42M params. Distillation T=1.0, alpha=0.1 (best of a 5x5 v
 Use the PyTorch-vs-PyTorch ratio as the headline speed-up; the ONNX ratios compare different runtimes. The "peak memory" column is unreliable.
 
 ## Cross-domain (BaitBuster-Bangla, 10,000 headlines, zero-shot)
-Teacher 83.13 -> 77.03 acc (-6.1); student 80.88 -> 73.75 (-7.1). The student does not generalise better. Both over-predict clickbait there.
+Teacher 83.13 -> 77.03 acc (-6.1); student 80.88 -> 73.75 (-7.1). The student does not generalise better. Both are conservative there: clickbait precision 97.0% (teacher) / 93.7% (student) but recall only 61.2% / 57.3% (FN 2,192 / 2,408; FP 105 / 217). An earlier version of this file said they over-predict clickbait; that came from a precision/recall/confusion-matrix argument-order bug, now fixed.
 
 ## Caveats
 Single teacher; seed-42 student used for McNemar/efficiency/cross-domain; distillation effect not significant at 3 seeds;

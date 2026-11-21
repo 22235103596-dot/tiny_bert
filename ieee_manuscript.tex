@@ -1,0 +1,158 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{TinyBanglaBERT: A Lightweight Knowledge-Distilled Transformer for Explainable Bangla Clickbait Headline Detection}
+
+\author{\IEEEauthorblockN{[Author Names]}
+\IEEEauthorblockA{\textit{Department of Computer Science and Engineering} \\
+\textit{Bangladesh University of Business and Technology (BUBT)}\\
+Dhaka, Bangladesh}
+}
+
+\maketitle
+
+\begin{abstract}
+BanglaBERT (110.6M parameters) detects Bangla clickbait well but is too large for browser or mobile deployment. We study how much of a fine-tuned BanglaBERT teacher can be retained by a 4-layer, 7.42M-parameter student trained with knowledge distillation on the BanglaBait corpus (12,044/1,506/1,506 train/val/test headlines). The teacher reaches 83.13\% accuracy (macro-F1 0.812). The best student reaches \textbf{80.52 $\pm$ 0.37\% accuracy} (macro-F1 $0.787 \pm 0.004$; three seeds), i.e.\ \textbf{96.9\% of teacher accuracy with 6.7\% of its parameters}, and is \textbf{11.6$\times$ faster} on CPU (13.4 ms vs.\ 154.4 ms per headline). A 2$\times$2 ablation shows that initialising from pretrained \texttt{banglabert\_small} layers is the dominant factor ($+4.5$ points), whereas distillation adds a smaller gain ($+0.9$ to $+1.2$ points) that is not statistically significant (exact McNemar $p=0.136$ and $0.071$). The student remains significantly worse than the teacher ($p=0.018$), and zero-shot transfer to 10,000 BaitBuster-Bangla headlines shows no robustness advantage (accuracy drops of 6.1 and 7.1 points). We also disclose and fix an implementation defect that silently disabled distillation in our first experiments.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Bangla NLP, knowledge distillation, clickbait detection, model compression, explainability.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Clickbait headlines use sensational or withholding language to attract clicks. Datasets such as BanglaBait \cite{mahtab2023} and BaitBuster-Bangla \cite{imran2023} and pretrained models such as BanglaBERT \cite{bhattacharjee2022} make supervised Bangla detection practical, but a 110M-parameter encoder has a $\sim$422 MB footprint and $\sim$154 ms CPU latency per headline. We ask how far distillation can compress a Bangla clickbait detector and what actually drives the outcome. Contributions: (i) a 4-layer, 7.42M-parameter student built from layers $\{2,5,8,11\}$ of \texttt{banglabert\_small}; (ii) a three-seed 2$\times$2 ablation with exact McNemar tests; (iii) efficiency and zero-shot cross-domain evaluation, including a negative robustness result; and (iv) disclosure of a pipeline bug (Hugging Face \texttt{remove\_unused\_columns}) that silently disabled distillation, with its fix and regression tests.
+
+\section{Methodology}
+\subsection{Data}
+BanglaBait contains 15,056 labelled headlines (34.8\% clickbait), split 12,044/1,506/1,506 (seed 42). The copy used here has no unlabeled rows, so no unlabeled distillation was performed. Maximum length is 128 tokens.
+
+\subsection{Teacher and Student}
+The teacher is \texttt{csebuetnlp/banglabert} (ELECTRA-base \cite{clark2020}) fine-tuned for up to 5 epochs (lr $2\!\times\!10^{-5}$, batch 32, class-weighted cross-entropy). The student uses the \texttt{banglabert\_small} configuration truncated to 4 layers (7.42M parameters) and is either initialised from pretrained layers (\emph{pretrained}, cf.\ \cite{turc2019}) or randomly (\emph{random}).
+
+\subsection{Distillation Objective}
+Following Hinton et al.\ \cite{hinton2015},
+\begin{equation}
+\mathcal{L} = \alpha \mathcal{L}_{\text{CE}}(\sigma(z_S), y) + (1-\alpha) T^2 \mathcal{L}_{\text{KL}}\!\left(\sigma\!\left(\tfrac{z_S}{T}\right)\,\middle\|\,\sigma\!\left(\tfrac{z_T}{T}\right)\right),
+\end{equation}
+with $T=1.0$ and $\alpha=0.1$ selected from a $5\times5$ validation grid. Students use lr $10^{-4}$, batch 64, up to 10 epochs with early stopping on validation macro-F1, and seeds 42, 43, 44.
+
+\subsection{Evaluation}
+Accuracy, macro-F1, exact McNemar tests \cite{mcnemar1947} on seed-42 models ($N=1{,}506$), CPU latency ($B=1$, $L=128$, 200 iterations), zero-shot transfer to 10,000 BaitBuster-Bangla headlines, and SHAP \cite{lundberg2017}/LIME \cite{ribeiro2016} attribution agreement.
+
+\section{Results}
+\subsection{In-Domain Performance and Ablation}
+\begin{table}[htbp]
+\caption{Factorial ablation on BanglaBait test (mean $\pm$ std, 3 seeds)}
+\begin{center}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Row} & \textbf{Init / KD} & \textbf{Acc (\%)} & \textbf{Macro-F1} & \textbf{\% teacher} \\
+\midrule
+Teacher & fine-tuned & 83.13 & 0.812 & 100 \\
+R0 & random / no & 75.19 $\pm$ 0.55 & 0.739 $\pm$ 0.006 & 90.4 \\
+R1 & pretrained / no & 79.66 $\pm$ 0.43 & 0.782 $\pm$ 0.004 & 95.8 \\
+R2 & random / yes & 76.38 $\pm$ 0.79 & 0.744 $\pm$ 0.004 & 91.9 \\
+R3 & pretrained / yes & \textbf{80.52 $\pm$ 0.37} & \textbf{0.787 $\pm$ 0.004} & 96.9 \\
+\bottomrule
+\end{tabular}
+\label{tab:ablation}
+\end{center}
+\end{table}
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.48\textwidth]{experiments/figures/fig1_ablation_accuracy.png}}
+\caption{Ablation accuracy with seed standard deviation.}
+\label{fig:ablation}
+\end{figure}
+
+\subsection{Statistical Significance}
+\begin{table}[htbp]
+\caption{Exact McNemar tests (seed 42, $N=1{,}506$)}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Comparison} & \textbf{A-only / B-only} & \textbf{$p$} \\
+\midrule
+Teacher vs.\ R3 & 114 / 80 & 0.018 \\
+R3 vs.\ R1 (KD, pretrained) & 74 / 56 & 0.136 \\
+R2 vs.\ R0 (KD, random) & 101 / 76 & 0.071 \\
+R3 vs.\ R2 (init, KD) & 136 / 82 & $<$0.001 \\
+R1 vs.\ R0 (init, no KD) & 157 / 96 & $<$0.001 \\
+\bottomrule
+\end{tabular}
+\label{tab:mcnemar}
+\end{center}
+\end{table}
+
+\subsection{Efficiency}
+\begin{table}[htbp]
+\caption{CPU efficiency (Kaggle, $B=1$, $L=128$, 200 iterations)}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{Params} & \textbf{Size} & \textbf{Latency} \\
+\midrule
+Teacher (PyTorch FP32) & 110.62M & 422.2 MB & 154.4 ms \\
+Student (PyTorch FP32) & 7.42M & 28.3 MB & 13.4 ms (11.6$\times$) \\
+Student (ONNX FP32) & 7.42M & 28.4 MB & 7.5 ms \\
+Student (ONNX INT8) & 7.42M & 7.3 MB & 8.2 ms \\
+\bottomrule
+\end{tabular}
+\label{tab:efficiency}
+\end{center}
+\end{table}
+The headline speed-up is the same-runtime PyTorch ratio; ONNX rows compare different runtimes, and INT8 is smaller but not faster than ONNX FP32.
+
+\subsection{Explainability}
+We compared SHAP and LIME token attributions of the final student on 15 test headlines selected to cover true/false positives and negatives. Mean top-3 token Jaccard overlap was 42.0\% (median 50.0\%), 33.4\% for clickbait tokens, and sign agreement was 54.9\%, close to chance. The two methods therefore agree only moderately, and we treat the attributions as indicative rather than definitive. Agreement varies by headline: for a clearly factual headline both methods give 100\% sign agreement, whereas for a viral-video headline both flag the word \emph{viral} yet their top-3 sets do not overlap (Jaccard 0.00).
+
+\subsection{Zero-Shot Cross-Domain Transfer}
+\begin{table}[htbp]
+\caption{BaitBuster-Bangla (10,000 headlines), zero-shot}
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{Acc (in$\to$cross)} & \textbf{Macro-F1} & \textbf{CB prec.} & \textbf{CB rec.} \\
+\midrule
+Teacher & 83.13 $\to$ 77.03 & 0.769 & 0.970 & 0.612 \\
+Student (R3) & 80.88 $\to$ 73.75 & 0.735 & 0.937 & 0.573 \\
+\bottomrule
+\end{tabular}
+\label{tab:cross}
+\end{center}
+\end{table}
+Both models are conservative on the new domain (high precision, low clickbait recall), suggesting different labelling conventions; the student shows no robustness advantage.
+
+\section{Discussion and Limitations}
+Pretrained initialisation, not distillation, explains most of the student's quality; the distillation gain is not significant at three seeds, and the teacher remains significantly better. Limitations: one teacher and one split; McNemar, efficiency and cross-domain use seed-42 models; no unlabeled data; latency measured on Kaggle CPU. Our first experiments silently trained without distillation because \texttt{teacher\_logits} was dropped by \texttt{remove\_unused\_columns=True}; this is fixed and guarded by tests, and all reported numbers come from re-runs.
+
+\section{Conclusion}
+A 7.42M-parameter student retains 96.9\% of BanglaBERT's accuracy (80.5\% vs.\ 83.1\%) while running 11.6$\times$ faster on CPU. Future work includes more seeds, intermediate-layer distillation \cite{jiao2020}, a 6-layer student and additional teachers.
+
+\begin{thebibliography}{00}
+\bibitem{bhattacharjee2022} A. Bhattacharjee \emph{et al.}, ``BanglaBERT: Language model pretraining and benchmarks for low-resource language understanding evaluation in Bangla,'' in \emph{Findings of NAACL 2022}, pp. 1318--1327.
+\bibitem{hinton2015} G. Hinton, O. Vinyals, and J. Dean, ``Distilling the knowledge in a neural network,'' arXiv:1503.02531, 2015.
+\bibitem{mahtab2023} M. Mahtab, M. Haque, M. Hasan, and F. Sadeque, ``BanglaBait: Semi-supervised adversarial approach for clickbait detection on Bangla clickbait dataset,'' in \emph{Proc. RANLP}, 2023, pp. 748--758.
+\bibitem{imran2023} A. Al Imran, M. S. H. Shovon, and M. F. Mridha, ``BaitBuster-Bangla: A comprehensive dataset for clickbait detection in Bangla with multi-feature and multimodal analysis,'' arXiv:2310.11465, 2023.
+\bibitem{clark2020} K. Clark, M.-T. Luong, Q. V. Le, and C. D. Manning, ``ELECTRA: Pre-training text encoders as discriminators rather than generators,'' in \emph{ICLR}, 2020.
+\bibitem{jiao2020} X. Jiao \emph{et al.}, ``TinyBERT: Distilling BERT for natural language understanding,'' in \emph{Findings of EMNLP}, 2020.
+\bibitem{turc2019} I. Turc, M.-W. Chang, K. Lee, and K. Toutanova, ``Well-read students learn better: On the importance of pre-training compact models,'' arXiv:1908.08962, 2019.
+\bibitem{mcnemar1947} Q. McNemar, ``Note on the sampling error of the difference between correlated proportions or percentages,'' \emph{Psychometrika}, vol. 12, no. 2, pp. 153--157, 1947.
+\bibitem{lundberg2017} S. M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model predictions,'' in \emph{NeurIPS}, 2017.
+\bibitem{ribeiro2016} M. T. Ribeiro, S. Singh, and C. Guestrin, ```Why should I trust you?': Explaining the predictions of any classifier,'' in \emph{ACM SIGKDD}, 2016.
+\end{thebibliography}
+
+\end{document}

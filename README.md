@@ -9,9 +9,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-**A Lightweight Knowledge-Distilled Transformer for Real-Time, Explainable Bangla Clickbait Detection on Edge Devices**
+**A Lightweight Knowledge-Distilled Transformer for Explainable Bangla Clickbait Headline Detection**
 
-[**Research Paper (IEEE Format)**](experiments/IEEE_PAPER_REPORT.md) • [**Full Results Chapter**](experiments/FINAL_RESULTS.md) • [**Reproduction Manual**](REPRODUCE.md) • [**LaTeX Manuscript**](experiments/ieee_manuscript.tex)
+[**Research Paper (IEEE Format)**](IEEE_PAPER_REPORT.md) • [**Full Results Chapter**](FINAL_RESULTS.md) • [**Reproduction Manual**](REPRODUCE.md) • [**LaTeX Manuscript**](ieee_manuscript.tex) • [Corrected Results Summary](RESULTS_NOV2026.md) • [Notebooks](notebooks/)
 
 </div>
 
@@ -57,15 +57,15 @@ Publication-ready 300 DPI figures generated from empirical evaluation:
 
 | Figure 1: 4-Way Ablation Analysis | Figure 2: Efficiency-Accuracy Tradeoff |
 |:---:|:---:|
-| ![Ablation](experiments/figures/fig1_ablation_f1_accuracy.png) | ![Efficiency](experiments/figures/fig2_efficiency_tradeoff.png) |
+| ![Ablation](archive_old_buggy_run/figures/fig1_ablation_f1_accuracy.png) | ![Efficiency](archive_old_buggy_run/figures/fig2_efficiency_tradeoff.png) |
 
 | Figure 3: Latency & Speedup Breakdown | Figure 4: Cross-Domain Generalization |
 |:---:|:---:|
-| ![Latency](experiments/figures/fig3_latency_speedup_breakdown.png) | ![Generalization](experiments/figures/fig4_crossdomain_generalization.png) |
+| ![Latency](archive_old_buggy_run/figures/fig3_latency_speedup_breakdown.png) | ![Generalization](archive_old_buggy_run/figures/fig4_crossdomain_generalization.png) |
 
 | Figure 5: SHAP vs. LIME Agreement | Figure 6: Test Confusion Matrices |
 |:---:|:---:|
-| ![Explainability](experiments/figures/fig5_explainability_agreement.png) | ![Confusion Matrices](experiments/figures/fig6_confusion_matrices.png) |
+| ![Explainability](archive_old_buggy_run/figures/fig5_explainability_agreement.png) | ![Confusion Matrices](archive_old_buggy_run/figures/fig6_confusion_matrices.png) |
 
 </div>
 
@@ -105,51 +105,18 @@ Cross-Method Token Agreement: Jaccard=0.67, Sign Agreement=100.0%
 ## 📂 Repository Structure
 
 ```
-tinybanglabert/
-├── configs/                                 # Strict YAML experiment configurations
-│   ├── base.yaml                            # Shared architecture and dataset defaults
-│   ├── teacher_baseline.yaml                # Teacher fine-tuning config
-│   ├── student_teacher_init_distilled.yaml  # Winning distillation config
-│   └── student_random_baseline.yaml         # Ablation baseline configs
-├── data/
-│   ├── raw/                                 # Untracked raw data (auto-downloaded)
-│   └── processed/
-│       ├── splits.json                      # Deterministic 80/10/10 split indices (tracked)
-│       └── data_report.md                   # Dataset hygiene and NFC normalization audit
-├── experiments/                             # Empirical results, reports, and publication artifacts
-│   ├── figures/                             # 300 DPI high-resolution figures (fig1 to fig6)
-│   ├── FINAL_RESULTS.md                     # Thesis Results Chapter package
-│   ├── IEEE_PAPER_REPORT.md                 # IEEE formatted conference manuscript draft
-│   ├── ieee_manuscript.tex                  # Ready-to-compile IEEEtran LaTeX source
-│   ├── ablation_table.csv                   # 4-way ablation results
-│   ├── efficiency_table.csv                 # PyTorch vs. ONNX INT8 benchmarks
-│   ├── significance_table.csv               # McNemar exact binomial test matrix
-│   ├── crossdomain_table.csv                # BaitBuster-Bangla 10k zero-shot benchmark
-│   └── explainability/examples.md           # Qualitative SHAP/LIME explanation case studies
-├── scripts/                                 # Executable CLI entry points
-│   ├── prepare_data.py                      # Data acquisition, cleaning, and stratification
-│   ├── train.py                             # Unified training & distillation pipeline
-│   ├── evaluate.py                          # Multi-metric evaluation runner
-│   ├── explain.py                           # SHAP & LIME CLI explainer
-│   ├── benchmark.py                         # Efficiency, latency, and memory profiler
-│   ├── tune_kd.py                           # Optuna hyperparameter tuning (T, alpha)
-│   └── generate_all_figures.py              # Visual plot generator
-├── src/                                     # Modular Python source library
-│   ├── data/                                # Cleaners, loaders, splitters, crossdomain pipelines
-│   ├── models/                              # Teacher, Student (TinyBanglaBERT), KD Loss
-│   ├── training/                            # Baseline, Distillation, and Grid Search Trainers
-│   ├── evaluation/                          # Metrics, McNemar exact tests, Ablation, Cross-Domain
-│   ├── explainability/                      # SHAP runner, LIME runner, Jaccard agreement
-│   ├── efficiency/                          # ONNX exporter, INT8 quantizer, Latency profiler
-│   └── utils/                               # Seeding, Config loader, Experiment logger
-├── tests/                                   # Complete Unit Test Suite (88 passing tests)
-├── CITATION.cff                             # GitHub native citation metadata
-├── CONTRIBUTING.md                          # Open-source contribution guidelines
-├── LICENSE                                  # MIT License
-├── pyproject.toml                           # PEP 517/518 build specification
-├── README.md                                # Master project documentation
-├── REPRODUCE.md                             # Step-by-step reproduction guide
-└── requirements.txt                         # Pinned pip requirements
+├── configs/               # YAML experiment configs (use teacher_baseline.yaml and student_kd_improved.yaml;
+│                          #   student_teacher_init_*.yaml are deprecated)
+├── data/processed/        # splits.json (deterministic 80/10/10 split, seed 42) + data report
+├── notebooks/             # Kaggle notebooks that produced the corrected results (01 teacher+grid, 02 ablation, 03 final eval)
+├── results/               # curated, VALID results (see results/README.md for what to copy in)
+├── experiments/           # outputs generated when you run the scripts (checkpoints git-ignored)
+├── archive_old_buggy_run/ # OLD outputs from before the distillation bug fix - do not cite
+├── scripts/               # CLI entry points (prepare_data, train, tune_kd, benchmark, explain, make_figures)
+├── src/                   # data, models (student, KD loss), training, evaluation, explainability, efficiency
+├── tests/                 # unit tests (tests/test_kd_fixes.py runs on CPU; some need trained checkpoints)
+├── RESULTS_NOV2026.md     # corrected results and explanation of the bug
+└── REPRODUCE.md, CITATION.cff, LICENSE, pyproject.toml, requirements.txt
 ```
 
 ---
